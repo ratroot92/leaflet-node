@@ -1,0 +1,14 @@
+
+POST http://deikho.pk/testapi/users/signup HTTP/1.1
+content-type: application/json
+
+{
+    "username":"ahmed",
+    "email":"asd@gmail.com",
+    "password":"ahmed",
+    "c_password":"ahmed",
+    "country":"pakistan",
+    "birthday":"06-08-1992",
+    "phone":"03441500542",
+    "sex":"male"
+}
