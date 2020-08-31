@@ -14,12 +14,18 @@ userRouter.post(
       .isLength({ max: 15 })
       .withMessage("Username can contain max 15 characters")
       .custom(async username => {
-        const value = await isMentionNameInUse(username);
+        const value = await userExists(username);
         if (value) {
             throw new Error('Username  already exists!!!');
         }
     }),
-    check("email", "Email is required").notEmpty().isEmail(),
+    check("email", "Email is required").notEmpty().isEmail()
+    .custom(async email => {
+        const value = await emailExists(email);
+        if (value) {
+            throw new Error('Email  already exists!!!');
+        }
+    }),
     check("password", "Password is required")
       .notEmpty()
       .trim()
@@ -53,25 +59,67 @@ userRouter.post(
       phone,
       sex,
     } = req.body;
-    // console.log(req.body);
-    // DB.query(`SELECT COUNT(*) AS total FROM cb_users WHERE   username=?`, [username], function (err, result) {
-    //   //result of the query is stored in 'result' and the error, if any, are stored in err
-    //   if(!error){
-    //     console.log("MENTION COUNT : "+results[0].total);
-    //     return resolve(results[0].total > 0);
-    // } else {
-    //     return reject(new Error('Database error!!'));
+         //Now Inserting into the Database
+    let signupData={
+        "username":username,
+        "email":email,
+        "password":password,
+        "country":country,
+        "birthday":birthday,
+        "status":"ToActivate",
+        "sex":sex,
+        "phone":phone,
+        "ip":"",
+        "signup_ip":"",
+        "category":"",
+        "avatar":""
+    }
+    // if(category && !empty(category)){
+    //     signupData["category"] = $category;
     // }
-    // });
+    // else{
+        //or req.headers['x-real-ip'] || req.connection.remoteAddress
+        signupData["category"] = "2";
+        signupData["ip"] = req.headers["x-real-ip"] || req.connection.remoteAddress;;
+        signupData["signup_ip"] = req.headers["x-real-ip"] || req.connection.remoteAddress;
+        signupData["avatar"] = 0;
 
-    res.status(200).json("success");
+        var query = DB.query('INSERT INTO cb_users SET ?', signupData, function(err, result) {
+           if(err){
+               res.status(400).json(err)
+           }
+           else{
+            res.status(200).json(result)  
+           }
+          });
+          console.log(query.sql); 
+    // }
+               
+
+    //res.status(200).json(signupData);
   }
 );
 
-function isMentionNameInUse(mentionName){
+function userExists(mentionUsername){
   
     return new Promise((resolve, reject) => {
-        DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   username=?', [mentionName], function (error, results, fields) {
+        DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   username=?', [mentionUsername], function (error, results, fields) {
+            if(!error){
+                console.log("MENTION COUNT : "+results[0].total);
+                return resolve(results[0].total > 0);
+            } else {
+                return reject(new Error('Database error!!'));
+            }
+          }
+        );
+    });
+}
+
+
+function emailExists(mentionEmail){
+  
+    return new Promise((resolve, reject) => {
+        DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   email=?', [mentionEmail], function (error, results, fields) {
             if(!error){
                 console.log("MENTION COUNT : "+results[0].total);
                 return resolve(results[0].total > 0);
