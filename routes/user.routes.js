@@ -1,11 +1,19 @@
 const express = require("express");
 const userRouter = express.Router();
 const { check, validationResult } = require("express-validator");
-const DB=require('./../config/db')
-
-
+const DB = require('./../config/db')
+const momentJS = require('moment');
+const SHA1 = require('sha1')
+const MD5 = require('md5')
+/*
+* Signup API
+  TODO: https://deikho.pk/testapi/users/signup
+! METHDO : POST
+! Forced HTTPS 
+*/
 userRouter.post(
   "/users/signup",
+  //! Validation Starts Here 
   [
     check("username", "username is required")
       .notEmpty()
@@ -16,16 +24,16 @@ userRouter.post(
       .custom(async username => {
         const value = await userExists(username);
         if (value) {
-            throw new Error('Username  already exists!!!');
+          throw new Error('Username  already exists!!!');
         }
-    }),
+      }),
     check("email", "Email is required").notEmpty().isEmail()
-    .custom(async email => {
+      .custom(async email => {
         const value = await emailExists(email);
         if (value) {
-            throw new Error('Email  already exists!!!');
+          throw new Error('Email  already exists!!!');
         }
-    }),
+      }),
     check("password", "Password is required")
       .notEmpty()
       .trim()
@@ -40,15 +48,25 @@ userRouter.post(
       return true;
     }),
     check("country", "Country is required").notEmpty(),
-    check("birthday", "Birthday date is required").notEmpty(),
+    check("birthday", "Birthday date is required").notEmpty().custom((date) => {
+      if (!momentJS(date, "YYYY-MM-DD", true).isValid()) {
+        throw new Error("Birthday date should be in valid format YYYY-MM-DD ")
+      }
+      return true;
+    }),
     check("sex", "Sex is required").notEmpty(),
     check("phone", "Phone number  is required").notEmpty(),
   ],
+  //TODO: Validation Ends Here 
   (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+    //TODO:Validation Successfull 
+    else{
+      
+   
     const {
       username,
       email,
@@ -59,76 +77,85 @@ userRouter.post(
       phone,
       sex,
     } = req.body;
-         //Now Inserting into the Database
-    let signupData={
-        "username":username,
-        "email":email,
-        "password":password,
-        "country":country,
-        "birthday":birthday,
-        "status":"ToActivate",
-        "sex":sex,
-        "phone":phone,
-        "ip":"",
-        "signup_ip":"",
-        "category":"",
-        "avatar":""
+    //TODO:Encrypt password
+    let encrptedPassword = MD5(SHA1(SHA1((MD5(req.body["password"])))))
+
+    //TODO: Now Inserting into the Database
+    let signupData = {
+      "username": username,
+      "email": email,
+      "password": encrptedPassword,
+      "country": country,
+      "birthday": birthday,
+      "status": "ToActivate",
+      "sex": sex,
+      "phone": phone,
+      "ip": "",
+      "signup_ip": "",
+      "category": "",
+      "avatar": ""
     }
-    // if(category && !empty(category)){
-    //     signupData["category"] = $category;
-    // }
-    // else{
-        //or req.headers['x-real-ip'] || req.connection.remoteAddress
-        signupData["category"] = "2";
-        signupData["ip"] = req.headers["x-real-ip"] || req.connection.remoteAddress;;
-        signupData["signup_ip"] = req.headers["x-real-ip"] || req.connection.remoteAddress;
-        signupData["avatar"] = 0;
+    //TODO: Check If Category Exists
+    let category = req.body["category"]
+    if (category) {
+      signupData["category"] = $category;
+    }
+    else {
+      //TODO: Default Category Applied 
+      signupData["category"] = "2";
+      //TODO: Add  Request Headers
+      signupData["ip"] = req.headers["x-real-ip"] || req.connection.remoteAddress;;
+      signupData["signup_ip"] = req.headers["x-real-ip"] || req.connection.remoteAddress;
+      signupData["avatar"] = 0;
+      res.status(200).json(signupData)
+      //TODO:Insert User
+      var insertUser = DB.query('INSERT INTO cb_users SET ?', signupData, function (err, result) {
+        if (err) {res.status(400).json(err)}
+      //TODO:Insertion Successfull
+        else {res.status(200).json(result){
+      
 
-        var query = DB.query('INSERT INTO cb_users SET ?', signupData, function(err, result) {
-           if(err){
-               res.status(400).json(err)
-           }
-           else{
-            res.status(200).json(result)  
-           }
-          });
-          console.log(query.sql); 
-    // }
-               
+        }}})
 
-    //res.status(200).json(signupData);
-  }
-);
-
-function userExists(mentionUsername){
+      }
+    }
+  });
+        
+        
   
-    return new Promise((resolve, reject) => {
-        DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   username=?', [mentionUsername], function (error, results, fields) {
-            if(!error){
-                console.log("MENTION COUNT : "+results[0].total);
-                return resolve(results[0].total > 0);
-            } else {
-                return reject(new Error('Database error!!'));
-            }
-          }
-        );
-    });
+
+
+    
+
+function userExists(mentionUsername) {
+
+  return new Promise((resolve, reject) => {
+    DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   username=?', [mentionUsername], function (error, results, fields) {
+      if (!error) {
+        console.log("MENTION COUNT : " + results[0].total);
+        return resolve(results[0].total > 0);
+      } else {
+        return reject(new Error('Database error!!'));
+      }
+    }
+    );
+  });
 }
 
 
-function emailExists(mentionEmail){
-  
-    return new Promise((resolve, reject) => {
-        DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   email=?', [mentionEmail], function (error, results, fields) {
-            if(!error){
-                console.log("MENTION COUNT : "+results[0].total);
-                return resolve(results[0].total > 0);
-            } else {
-                return reject(new Error('Database error!!'));
-            }
-          }
-        );
-    });
+function emailExists(mentionEmail) {
+
+  return new Promise((resolve, reject) => {
+    DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   email=?', [mentionEmail], function (error, results, fields) {
+      if (!error) {
+        console.log("MENTION COUNT : " + results[0].total);
+        return resolve(results[0].total > 0);
+      } else {
+        return reject(new Error('Database error!!'));
+      }
+    }
+    );
+  });
 }
 
 // ###############################################

@@ -16,20 +16,20 @@ content-type: application/json
 
 
 {
-    "username": "ahmed,",
-    "email": "asd@gmail.com",
-    "password": "asdasdasd",
-    "country": "pakistan",
-    "birthday": "06-08-1992",
-    "status": "ToActivate",
-    "sex": "asd",
-    "phone": "03441500542",
-    "ip": "115.186.191.32",
-    "signup_ip": "115.186.191.32",
-    "category": "2",
-    "avatar": 0
+   username:ahmed,,
+   email:asd@gmail.com,
+   password:asdasdasd,
+   country:pakistan,
+   birthday:06-08-1992,
+   status:ToActivate,
+   sex:asd,
+   phone:03441500542,
+   ip:115.186.191.32,
+   signup_ip:115.186.191.32,
+   category:2,
+   avatar: 0
 }
 
 
-"sql": "INSERT INTO cb_users SET `username` = 'ahmed,', `email` = 'asd@gmail.com', `password` = 'asdasdasd', `country` = 'pakistan', `birthday` = '06-08-1992', `status` = 'ToActivate', `sex` = 'asd', `phone` = '03441500542', `ip` = '115.186.191.32', `signup_ip` = '115.186.191.32', `category` = '2', `avatar` = 0"
+"sql":"INSERT INTO cb_users SET `username` = 'ahmed,', `email` = 'asd@gmail.com', `password` = 'asdasdasd', `country` = 'pakistan', `birthday` = '06-08-1992', `status` = 'ToActivate', `sex` = 'asd', `phone` = '03441500542', `ip` = '115.186.191.32', `signup_ip` = '115.186.191.32', `category` = '2', `avatar` = 0"
 }
