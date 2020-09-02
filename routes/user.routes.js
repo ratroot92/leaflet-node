@@ -229,7 +229,8 @@ userRouter.get("/header_data", (req, res) => {
   // res.setHeader("Content-Type", "application/json")
 });
 
-userRouter.get("/base/configss", (req, res) => {
+userRouter.get("/base/configs", (req, res) => {
+  console.log("/base/config");
   let configs = {
     index_recent: "6",
     index_featured: "3",
