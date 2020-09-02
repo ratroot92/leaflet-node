@@ -1799,7 +1799,6 @@ userRouter.post(
 //           $data['user'] = $user;
 //           return $response->withStatus(200)->withHeader("Content-Type", "application/json")->withJson($data);
 //       }else{
-
 //           $data["status"] = "401";
 //           $data["message"] = "Unauthorized";
 //           $data['user'] = null;
