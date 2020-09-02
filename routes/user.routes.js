@@ -5,12 +5,19 @@ const DB = require('./../config/db')
 const momentJS = require('moment');
 const SHA1 = require('sha1')
 const MD5 = require('md5')
+const JWT=require('jsonwebtoken')
+const { body } = require('express-validator/check')
+const base62 =require('base62')
+const crypto =require('crypto')
+const express_JWT=require('express-jwt')
+
 /*
 * Signup API
   TODO: https://deikho.pk/testapi/users/signup
 ! METHDO : POST
 ! Forced HTTPS 
 */
+
 userRouter.post(
   "/users/signup",
   //! Validation Starts Here 
@@ -21,19 +28,11 @@ userRouter.post(
       .withMessage("Username must contain at least 5 characters")
       .isLength({ max: 15 })
       .withMessage("Username can contain max 15 characters")
-      .custom(async username => {
-        const value = await userExists(username);
-        if (value) {
-          throw new Error('Username  already exists!!!');
-        }
-      }),
+      .custom(async username => {const value = await userExists(username);
+        if (value) {throw new Error('Username  already exists!!!');} }),
     check("email", "Email is required").notEmpty().isEmail()
-      .custom(async email => {
-        const value = await emailExists(email);
-        if (value) {
-          throw new Error('Email  already exists!!!');
-        }
-      }),
+      .custom(async email => {const value = await emailExists(email);
+        if (value) {throw new Error('Email  already exists!!!');}}),
     check("password", "Password is required")
       .notEmpty()
       .trim()
@@ -41,10 +40,8 @@ userRouter.post(
       .withMessage("Password must contain at least 5 characters")
       .isLength({ max: 20 })
       .withMessage("Password can contain max 60 characters"),
-    check("c_password").custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error("Password  do not match");
-      }
+    check("c_password").custom((value, { req }) => 
+    {if (value !== req.body.password) {throw new Error("Password  do not match");}
       return true;
     }),
     check("country", "Country is required").notEmpty(),
@@ -101,6 +98,7 @@ userRouter.post(
       signupData["category"] = $category;
     }
     else {
+      let globalUserId;
       //TODO: Default Category Applied 
       signupData["category"] = "2";
       //TODO: Add  Request Headers
@@ -112,21 +110,46 @@ userRouter.post(
       var insertUser = DB.query('INSERT INTO cb_users SET ?', signupData, function (err, result) {
         if (err) {res.status(400).json(err)}
       //TODO:Insertion Successfull
-        else {res.status(200).json(result){
-      
+        else {
+          globalUserId=result["id"]
+      //TODO:Create Profile User 
+      let  profileData={
+        "userid":globalUserId,//!$this->users->userid;
+        "first-name":username,
+        "is_default":"yes",
+      }
+      //TODO:Insert User Profile
+      var insertUser = DB.query('INSERT INTO cb_user_profile SET ?', profileData, function (err, result) {
+        if (err) {res.status(400).json(err)}
+        else{
+        //TODO:Create Sendback Resposnse
+        let Response ={
+          "status":200,
+          "message":"Success",
+          "data":{"userid":globalUserId}//!array("userid"=>$this->users->userid);
+        }
+       res.status(200).json(Response)
+        }
+        });//TODO:End User Profile Insert
 
-        }}})
+    
+
+        }})//TODO:End User Insert
 
       }
-    }
+    }//TODO:Validation Successfull 
+
   });
+/*
+! End Signup API   
+*/
         
         
   
 
 
     
-
+//? HELPING FUNCTION START 
 function userExists(mentionUsername) {
 
   return new Promise((resolve, reject) => {
@@ -142,9 +165,7 @@ function userExists(mentionUsername) {
   });
 }
 
-
 function emailExists(mentionEmail) {
-
   return new Promise((resolve, reject) => {
     DB.query('SELECT COUNT(*) AS total FROM cb_users WHERE   email=?', [mentionEmail], function (error, results, fields) {
       if (!error) {
@@ -157,23 +178,16 @@ function emailExists(mentionEmail) {
     );
   });
 }
-
-// ###############################################
-// GET :: http://deikho.com/header_data
-// ###############################################
+//?HELPING FUNCTIONS END 
+//TODO: GET :: http://deikho.com/header_data
 userRouter.get("/header_data", (req, res) => {
   let data = {
     status: "",
     name: "",
     value: "",
   };
-
-  // ###############################################
-  // req["headers"]=== WILL ALWAYS OUTPUT KEYS IN LOWER CASE
-  // ###############################################
+//TODO: req["headers"]=== WILL ALWAYS OUTPUT KEYS IN LOWER CASE
   let All_Headers = req["headers"];
-
-  // for (var key in All_Headers)
   if (All_Headers["x-msisdn"]) {
     {
       let Header_Value = All_Headers["x-msisdn"];
@@ -181,9 +195,6 @@ userRouter.get("/header_data", (req, res) => {
       data["status"] = true;
       data["name"] = "msisdn";
       data["value"] = Header_Value;
-
-      // res.setHeader("Content-Type", "application/json")
-      // res.send(data);
       res.send(data);
     }
   } else {
@@ -192,13 +203,10 @@ userRouter.get("/header_data", (req, res) => {
     data["value"] = "";
     res.send(data);
   }
-
   // res.setHeader("Content-Type", "application/json")
 });
 
 userRouter.get("/base/configss", (req, res) => {
-  // console.log(req.body)
-  // console.log("Request Dispateched ")
   let configs = {
     index_recent: "6",
     index_featured: "3",
@@ -1702,5 +1710,148 @@ userRouter.get("/base/configss", (req, res) => {
   //res.setHeader('Content-Type', 'application/json');
   res.status(200).json({ configs });
 });
+
+
+
+userRouter.post('signin',[
+  check("username", "username is required").notEmpty(),
+  check("password", "password is required").notEmpty()],(req,res)=>{
+
+    const {username,password}=req.body
+    let encrptedPassword = MD5(SHA1(SHA1((MD5(req.body["password"])))))
+    //TODO:Check Username and Password 
+    var signIn = DB.query('SELECT * FROM accounts WHERE username = ? AND password ', [username,encrptedPassword], function (err, result) {
+      if (err) {res.status(400).json(err)}
+      else{
+       
+        if (result.length > 0) {
+        let token =getToken();
+        let  user ={
+          "token":token,
+          "expires":token["expires"]
+        }
+        let userid=result["userid"]
+        let active="yes"
+        //! Check If User Has Subscrition
+        let check =activeSubscriptionExists(userid,active)
+      }
+    }
+    })
+})
+
+// public function signIn($request,$response,$args) {
+
+//   extract($request->getParsedBody());
+
+//   if (!empty($username) && !empty($password) ){
+//       $password = pass_code($password);
+//       //'username','=',$username
+//       $user = Users::where(function($query) use ($username){
+//           $query->where('username','=',$username)->orWhere('phone','=',$username);
+//       })->where('password','=',$password)->first($this->users->publicFields);
+//       if ($user){
+//           $token = $this->getToken($user);
+//           $user["token"] = $token['token'];
+//           $user["expires"] = $token['expires'];
+
+//           // checking if user has a subscription up and running
+//           if($this->paidSubscriptions->tableExists()){
+//               $check = $this->paidSubscriptions->activeSubscriptionExists($user['userid'],'yes');
+//               $check!=0 ? $user['is_subscribed'] = 'yes' : $user['is_subscribed'] = 'no';
+//           }else{
+//               $data["status"] = "405";
+//               $data["message"] = "Method Not Allowed";
+//               $data['user'] = null;
+//               return $response->withStatus(405)->withHeader("Content-Type", "application/json")->withJson($data); 
+//           } 
+
+//           $data["status"] = "200";
+//           $data["message"] = "Success";
+//           $data['user'] = $user;
+//           return $response->withStatus(200)->withHeader("Content-Type", "application/json")->withJson($data);
+//       }else{
+          
+//           $data["status"] = "401";
+//           $data["message"] = "Unauthorized";
+//           $data['user'] = null;
+//           return $response->withStatus(401)->withHeader("Content-Type", "application/json")->withJson($data);
+          
+//       }
+      
+//   }else{
+
+//       $data["status"] = "400";
+//       $data["message"] = "Unauthorized";
+//       $data['user'] = null;
+//       return $response->withStatus(400)->withHeader("Content-Type", "application/json")->withJson($data);
+//   }
+// }
+
+//? HELPING FUNCTIONS 
+const getToken=(user)=>{
+let now =new Date().getTime()//!new DateTime();
+let future=new Date("+30 days")//!new DateTime("+30 days");
+// let future=new Date.toISOString()
+let jti =base62.encode(crypto.randomBytes(16));
+payload={
+  "iat":now,//!$now->getTimeStamp(),
+   "exp":future.getTime(),//!$future->getTimeStamp(),
+   "jti":jti,
+   "sub":"",//!$user["userid"]
+}
+ const  secret = "clipbucket";
+ const    token = JWT.sign(payload,secret)
+ let response ={
+   "token":token,
+   "expires":future.getTime(),
+ }
+
+ return response;
+/*
+private function getToken($user) {
+
+    $now = new DateTime();
+    $future = new DateTime("+30 days");
+    $jti = (new Base62)->encode(random_bytes(16));
+    $payload = [
+        "iat" => $now->getTimeStamp(),
+        "exp" => $future->getTimeStamp(),
+        "jti" => $jti,
+        "sub" => $user["userid"]
+    ];
+    $secret = "clipbucket";
+    $token = JWT::encode($payload, $secret, "HS256");
+
+    $response['token'] = $token;
+    $response['expires'] = $future->getTimeStamp();
+    return $response;
+}
+ */
+
+ /**
+     * @todo    : This method is used to check if subscription already exists against a user
+     * @author  : <awaisfiaz.dev@iu.com.pk> <Awais Fiaz>
+*/
+   const  activeSubscriptionExists=(userid,active)=>{
+    var signIn = DB.query('SELECT COUNT(*) AS total FROM cb_paid_subscriptions WHERE userid = ? AND active = ?', [userid,active], function (err, result) {
+      if (!error) {
+        console.log("MENTION COUNT : " + results[0].total);
+        return resolve(results[0].total > 0);
+      } else {
+        return reject(new Error('Database error!!'));
+      }
+
+      }
+    })
+    }
+      // return $this->where('userid',$userid)->where('active',$active)->count();
+   }
+
+
+
+
+
+}
+
 
 module.exports = userRouter;

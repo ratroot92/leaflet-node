@@ -2,6 +2,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const DB=require('./config/db')
+const expressValidator = require('express-validator')
+
 
 // var connection = mysql.createPool({
 //   host: "deikho-billing.cwf1fb8z5zka.us-east-1.rds.amazonaws.com",
@@ -20,9 +22,10 @@ const app = express();
 
 
 //apply default middlewares 
- app.use(express.json())
+app.use(express.json())
 app.use(bodyParser.urlencoded({ extended: false }))
-
+app.use(bodyParser.json())
+app.use(expressValidator())
 
 
 // register router 
